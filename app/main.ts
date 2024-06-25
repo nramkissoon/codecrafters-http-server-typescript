@@ -36,6 +36,13 @@ const server = net.createServer((socket) => {
         const args = process.argv.slice(2);
         const [___, absPath] = args;
         const filePath = absPath + "/" + fileName;
+        if (request.startsWith("POST")) {
+          const lines = request.split("\r\n");
+          const requestBody = lines[lines.length - 1];
+          fs.writeFileSync(filePath, requestBody);
+          changeResponse("HTTP/1.1 201 Created\r\n\r\n");
+          break;
+        }
         if (fs.existsSync(filePath)) {
           const contents = fs.readFileSync(filePath);
           response = `HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${contents.length}\r\n\r\n${contents}`;
