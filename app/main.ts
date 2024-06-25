@@ -1,4 +1,5 @@
 import * as net from "net";
+import fs from "fs";
 
 const server = net.createServer((socket) => {
   socket.on("data", (data) => {
@@ -29,6 +30,21 @@ const server = net.createServer((socket) => {
         response = `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}`;
         changeResponse(response);
         break;
+      }
+      case "files": {
+        const [_, __, fileName] = path.split("/");
+        const args = process.argv.slice(2);
+        const [___, absPath] = args;
+        const filePath = absPath + "/" + fileName;
+        if (fs.existsSync(filePath)) {
+          const contents = fs.readFileSync(filePath);
+          response = `HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${contents.length}\r\n\r\n${contents}`;
+          changeResponse(response);
+          break;
+        } else {
+          changeResponse("HTTP/1.1 404 Not Found\r\n\r\n");
+          break;
+        }
       }
       default: {
         response = "HTTP/1.1 404 Not Found\r\n\r\n";
