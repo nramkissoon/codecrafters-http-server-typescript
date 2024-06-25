@@ -4,7 +4,7 @@ import fs from "fs";
 const getAcceptEncoding = (request: string) => {
   const encodings = request.split("Accept-Encoding: ")[1];
   if (encodings) {
-    return encodings.split("\r\n")[0].split(",");
+    return encodings.split("\r\n")[0].split(", ");
   }
 };
 
