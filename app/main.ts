@@ -1,5 +1,6 @@
 import * as net from "net";
 import fs from "fs";
+import * as zlib from "zlib";
 
 const getAcceptEncoding = (request: string) => {
   const encodings = request.split("Accept-Encoding: ")[1];
@@ -28,21 +29,23 @@ const server = net.createServer((socket) => {
     console.log(path.split("/")[1]);
     const params = path.split("/")[1];
     let response: string;
+    const acceptEncodings = getAcceptEncoding(request);
+    let compress = false;
+    if (acceptEncodings?.find((v) => v === "gzip")) {
+      compress = true;
+    }
+
     function changeResponse(
       status: string,
       headers?: string[],
-      body?: string
+      body?: string | Buffer
     ): void {
-      const acceptEncodings = getAcceptEncoding(request);
-      let compress = false;
-      if (acceptEncodings?.find((v) => v === "gzip")) {
-        compress = true;
-      }
       const response = `${status}\r\n${buildResponseHeaders(
         headers,
         compress
-      )}${body}`;
+      )}`;
       socket.write(response);
+      if (body) socket.write(body);
       socket.end();
     }
     switch (params) {
@@ -52,7 +55,16 @@ const server = net.createServer((socket) => {
       }
       case "echo": {
         const message = path.split("/")[2];
-        response = `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${message.length}\r\n\r\n${message}`;
+        if (compress) {
+          const buffer = Buffer.from(message, "utf8");
+          const zipped = zlib.gzipSync(buffer);
+          changeResponse(
+            OK,
+            ["Content-Type: text/plain", `Content-Length: ${zipped.length}`],
+            zipped
+          );
+          break;
+        }
         changeResponse(
           OK,
           ["Content-Type: text/plain", `Content-Length: ${message.length}`],
